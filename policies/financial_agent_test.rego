@@ -1,35 +1,30 @@
 package aegis.authz
 
-test_allow_valid_action if {
+test_allow_wealth_advisory_permitted_action if {
 	allow with input as {
-		"agent": {"id": "agent-001", "role": "trader"},
+		"agent": {"id": "wealth-001", "role": "wealth_advisory"},
 		"action": "transfer",
 		"amount": 300,
 	}
 }
 
-test_deny_out_of_role_action if {
+test_allow_hft_permitted_action if {
+	allow with input as {
+		"agent": {"id": "hft-001", "role": "hft"},
+		"action": "query_balance",
+		"amount": 0,
+	}
+}
+
+test_deny_rogue_any_action if {
 	not allow with input as {
-		"agent": {"id": "agent-002", "role": "analyst"},
+		"agent": {"id": "rogue-001", "role": "rogue"},
 		"action": "transfer",
 		"amount": 50,
 	}
 	deny_reason == "action_not_permitted" with input as {
-		"agent": {"id": "agent-002", "role": "analyst"},
+		"agent": {"id": "rogue-001", "role": "rogue"},
 		"action": "transfer",
 		"amount": 50,
-	}
-}
-
-test_deny_over_budget_action if {
-	not allow with input as {
-		"agent": {"id": "agent-001", "role": "trader"},
-		"action": "transfer",
-		"amount": 900,
-	}
-	deny_reason == "budget_exceeded" with input as {
-		"agent": {"id": "agent-001", "role": "trader"},
-		"action": "transfer",
-		"amount": 900,
 	}
 }

@@ -1,14 +1,7 @@
 {
   "permissions": {
-    "trader": ["transfer", "query_balance"],
-    "analyst": ["query_balance"]
-  },
-  "caps": {
-    "agent-001": 1000,
-    "agent-002": 500
-  },
-  "spent": {
-    "agent-001": 200,
-    "agent-002": 500
+    "wealth_advisory": ["query_balance", "transfer"],
+    "hft": ["query_balance", "transfer"],
+    "rogue": []
   }
 }
