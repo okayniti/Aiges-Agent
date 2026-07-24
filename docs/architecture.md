@@ -86,6 +86,37 @@ reimplements the hash rule from the schema rather than importing the gateway's c
 verifier sharing code with the writer only proves the writer is self-consistent. It reads
 only stored columns, so it also works against a database dump or a replica.
 
+## The agent fleet
+
+`agents/fleet.py` runs three simulated agents concurrently, all routed through the
+gateway. Behaviour is deterministic for a given `--seed` so a demo run can be repeated.
+
+| Agent | Role | Behaviour | What it demonstrates |
+|---|---|---|---|
+| `wealth-001` | `wealth_advisory` | reads balances, occasional modest transfer | that the policy actually permits legitimate work |
+| `hft-001` | `hft` | small transfers every 0.4s | the spend cap stopping a *permitted* agent once its budget is gone |
+| `rogue-001` | `rogue` | escalating attempts, incl. an action not in the vocabulary | policy refusing everything, regardless of amount |
+
+The HFT agent matters because nothing about it misbehaves — every action it takes is
+permitted by policy, and it still gets cut off. Policy and budget are separate controls.
+Its `query_balance` calls keep succeeding after its transfers are refused, since a spent
+budget should not block a read.
+
+**A revoked agent does not stop asking.** It keeps issuing the same actions and the gateway
+keeps refusing them. Governance that relied on the agent choosing to stand down would be
+worthless against a compromised or malfunctioning agent, so enforcement lives at the
+chokepoint rather than in the agent's own good behaviour. A mid-run fleet kill is visible
+as every agent flipping to `revoked` and back without any of them pausing.
+
+```
+  3.6s  hft-001     transfer      10.00  ALLOW
+  4.0s  hft-001     transfer      20.00  DENY   revoked     <- operator hits kill switch
+  4.1s  rogue-001   transfer   25000.00  DENY   revoked
+  4.4s  wealth-001  transfer     100.00  DENY   revoked
+  ...
+  9.1s  hft-001     query_balance  0.00  ALLOW              <- operator restores
+```
+
 ## Services
 
 - **Aegis Gateway** (`aegis-gateway/`) — FastAPI. Runs the three checks, writes the ledger,
@@ -105,9 +136,10 @@ Listed so this document is not read as claiming more than exists:
 
 - **WebSocket / Redis Pub/Sub push.** Revocation works by setting a Redis key, and the
   gateway reads it on the next action. There is no live push channel to the console yet.
-- **The agent fleet.** `agents/` holds `mock_attested_agent.py` and `groq_agent.py`. The
-  three personas — Wealth Advisory, HFT, Rogue — exist as roles in policy, not as running
-  agents.
+- **Agent reasoning is not wired into gateway requests.** `agents/groq_agent.py` can produce
+  real LLM reasoning, but `POST /agent-action` has no field to carry a rationale, so the
+  fleet's actions are scripted rather than model-chosen. Adding a rationale to the request
+  and the ledger would close this.
 - **Operator console behaviour.** `operator-console/` is a Next.js shell with placeholder
   pages for fleet, policy, and audit. It does not talk to the gateway.
 - **Banking API forwarding.** An allowed action returns `{"allow": true}`. The gateway does
