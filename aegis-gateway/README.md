@@ -15,6 +15,9 @@ where policy checks and budget checks happen, so no action can bypass governance
 - `GET /fleet` — every registered agent's role, cap, spend, remaining, and revoked state,
   plus the Redis-vs-ledger spend reconciliation.
 - `GET /audit?limit=50` — recent ledger entries newest-first, plus chain integrity.
+- `GET /ws` — WebSocket. Streams every decision and revocation as it happens, each event
+  carrying the `ledger_id` and `hash` of the row it corresponds to. Send-only; the gateway
+  ignores anything a client sends.
 
 ```bash
 curl -X POST http://localhost:8001/agent-action \

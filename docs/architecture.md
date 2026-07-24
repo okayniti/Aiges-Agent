@@ -86,6 +86,33 @@ reimplements the hash rule from the schema rather than importing the gateway's c
 verifier sharing code with the writer only proves the writer is self-consistent. It reads
 only stored columns, so it also works against a database dump or a replica.
 
+## Live event feed
+
+`GET /ws` (WebSocket) streams every decision and every revocation as it happens, so the
+console reflects a kill switch immediately rather than inferring it from the next action.
+
+Events do not go straight from the request handler to the socket. The handler only knows
+about clients connected to *its own* process, so behind a load balancer with more than one
+gateway replica, a console attached to replica A would silently miss everything handled by
+replica B. Instead the handler publishes to a Redis channel and every replica relays that
+channel to its own clients, so any replica can serve any console.
+
+Verified by publishing an event straight into Redis from an unrelated process and watching
+it arrive at a connected client — the path really is via Redis, not in-process.
+
+One Redis subscription serves all connected clients rather than one per connection; three
+clients connecting and disconnecting leaves `PUBSUB NUMSUB aegis:events` at 1.
+
+Events are published *after* the ledger write, so the feed never announces a decision that
+is not yet durably recorded, and each event carries the `ledger_id` and `hash` of the row
+it corresponds to.
+
+```
+  6.6s  #125  decision   rogue-001  exfiltrate_funds  5000.00  allow=False action_not_permitted
+  6.7s  #126  REVOCATION scope=agent subject=hft-001 revoked=True
+  6.8s  #127  decision   hft-001    transfer            25.00  allow=False revoked
+```
+
 ## The agent fleet
 
 `agents/fleet.py` runs three simulated agents concurrently, all routed through the
@@ -121,7 +148,7 @@ as every agent flipping to `revoked` and back without any of them pausing.
 
 - **Aegis Gateway** (`aegis-gateway/`) — FastAPI. Runs the three checks, writes the ledger,
   and exposes the operator surface. Endpoints: `GET /health`, `POST /agent-action`,
-  `POST /revoke`, `POST /restore`, `GET /fleet`, `GET /audit`.
+  `POST /revoke`, `POST /restore`, `GET /fleet`, `GET /audit`, `GET /ws` (WebSocket).
 - **OPA** (`policies/`) — policy engine, evaluates role/action rules. Policies are mounted
   read-only from `policies/`.
 - **Redis** — kill-switch flags and spend state (`cap:agent:{id}`, `spent:agent:{id}`).
@@ -134,8 +161,8 @@ All four run via `infra/docker-compose.yml`.
 
 Listed so this document is not read as claiming more than exists:
 
-- **WebSocket / Redis Pub/Sub push.** Revocation works by setting a Redis key, and the
-  gateway reads it on the next action. There is no live push channel to the console yet.
+- **Console wiring.** The gateway exposes everything the console needs (`/fleet`, `/audit`,
+  `/ws`, `/revoke`), but `operator-console/` does not call any of it yet.
 - **Agent reasoning is not wired into gateway requests.** `agents/groq_agent.py` can produce
   real LLM reasoning, but `POST /agent-action` has no field to carry a rationale, so the
   fleet's actions are scripted rather than model-chosen. Adding a rationale to the request

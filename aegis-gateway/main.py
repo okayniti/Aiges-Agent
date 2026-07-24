@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import hashlib
 import json
 from contextlib import asynccontextmanager
@@ -9,7 +11,7 @@ from typing import Literal
 import asyncpg
 import httpx
 import redis.asyncio as redis
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 OPA_AUTHZ_URL = "http://opa:8181/v1/data/aegis/authz"
@@ -31,6 +33,13 @@ AUDIT_LOCK_KEY = 91827364501
 # when the whole fleet is.
 OPERATOR_ROLE = "operator"
 FLEET_SUBJECT = "*"
+
+# Events are fanned out to WebSocket clients through Redis Pub/Sub rather than
+# pushed straight from the request handler. The handler only knows about clients
+# connected to *this* process, so with more than one gateway replica behind a load
+# balancer, a console attached to replica A would silently miss every decision
+# handled by replica B. Publishing to Redis means any replica can serve any client.
+EVENT_CHANNEL = "aegis:events"
 
 # Check-and-increment of an agent's spend against its cap, run inside Redis so the
 # whole thing is one atomic step. Splitting it into GET-then-INCRBYFLOAT would let
@@ -62,6 +71,51 @@ pg_pool: asyncpg.Pool | None = None
 agent_registry: dict[str, dict] = {}
 
 
+class Broadcaster:
+    """Relays Redis Pub/Sub events to every connected WebSocket client.
+
+    One Redis subscription serves all clients rather than one per connection, so a
+    console with several tabs open costs one subscription, not several.
+    """
+
+    def __init__(self) -> None:
+        self.clients: set[WebSocket] = set()
+        self._pump: asyncio.Task | None = None
+
+    def start(self) -> None:
+        self._pump = asyncio.create_task(self._run())
+
+    async def stop(self) -> None:
+        if self._pump:
+            self._pump.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._pump
+
+    async def _run(self) -> None:
+        async with redis_client.pubsub() as pubsub:
+            await pubsub.subscribe(EVENT_CHANNEL)
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                await self._fanout(message["data"])
+
+    async def _fanout(self, payload: str) -> None:
+        # Iterate a snapshot: a send failure mutates the set, and a slow or dead
+        # client must not stop the others from getting the event.
+        for client in list(self.clients):
+            try:
+                await client.send_text(payload)
+            except (WebSocketDisconnect, RuntimeError):
+                self.clients.discard(client)
+
+
+broadcaster = Broadcaster()
+
+
+async def publish_event(event: dict) -> None:
+    await redis_client.publish(EVENT_CHANNEL, json.dumps(event))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global pg_pool, agent_registry
@@ -73,9 +127,11 @@ async def lifespan(app: FastAPI):
         await redis_client.setnx(f"cap:agent:{agent_id}", entry["cap"])
 
     pg_pool = await asyncpg.create_pool(POSTGRES_DSN)
+    broadcaster.start()
     try:
         yield
     finally:
+        await broadcaster.stop()
         await pg_pool.close()
 
 
@@ -139,8 +195,8 @@ async def append_ledger(
     amount: Decimal,
     allowed: bool,
     deny_reason: str | None,
-) -> None:
-    """Append one entry to the hash-chained ledger.
+) -> dict:
+    """Append one entry to the hash-chained ledger and return how it was recorded.
 
     Deliberately not wrapped in try/except: if an event cannot be recorded, the
     request fails rather than succeeding with no trace.
@@ -156,12 +212,13 @@ async def append_ledger(
             payload = canonical_payload(
                 ts, agent_id, agent_role, action, amount, allowed, deny_reason
             )
-            await conn.execute(
+            row = await conn.fetchrow(
                 """
                 INSERT INTO audit_log (
                     ts, agent_id, agent_role, action, amount,
                     allowed, deny_reason, prev_hash, hash
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id, hash
                 """,
                 ts,
                 agent_id,
@@ -173,6 +230,8 @@ async def append_ledger(
                 prev_hash,
                 row_hash(prev_hash, payload),
             )
+
+    return {"ledger_id": row["id"], "hash": row["hash"], "ts": ts.isoformat()}
 
 
 async def decide(request: AgentActionRequest) -> dict:
@@ -227,13 +286,31 @@ def health():
 @app.post("/agent-action")
 async def agent_action(request: AgentActionRequest):
     decision = await decide(request)
-    await append_ledger(
+    amount = Decimal(f"{request.amount:.2f}")
+    recorded = await append_ledger(
         request.agent.id,
         request.agent.role,
         request.action,
-        Decimal(f"{request.amount:.2f}"),
+        amount,
         decision["allow"],
         decision.get("deny_reason"),
+    )
+
+    # Published after the ledger write, so an event never announces a decision that
+    # is not yet durably recorded.
+    await publish_event(
+        {
+            "type": "decision",
+            "ts": recorded["ts"],
+            "ledger_id": recorded["ledger_id"],
+            "hash": recorded["hash"],
+            "agent_id": request.agent.id,
+            "agent_role": request.agent.role,
+            "action": request.action,
+            "amount": str(amount),
+            "allowed": decision["allow"],
+            "deny_reason": decision.get("deny_reason"),
+        }
     )
     return decision
 
@@ -252,13 +329,25 @@ async def set_revocation(request: RevokeRequest, revoked: bool) -> dict:
     else:
         await redis_client.delete(key)
 
-    await append_ledger(
+    recorded = await append_ledger(
         subject,
         OPERATOR_ROLE,
         "revoke" if revoked else "restore",
         Decimal("0.00"),
         True,
         None,
+    )
+    await publish_event(
+        {
+            "type": "revocation",
+            "ts": recorded["ts"],
+            "ledger_id": recorded["ledger_id"],
+            "hash": recorded["hash"],
+            "scope": request.scope,
+            "agent_id": request.agent_id,
+            "subject": subject,
+            "revoked": revoked,
+        }
     )
     return {"scope": request.scope, "agent_id": request.agent_id, "revoked": revoked}
 
@@ -271,6 +360,25 @@ async def revoke(request: RevokeRequest):
 @app.post("/restore")
 async def restore(request: RevokeRequest):
     return await set_revocation(request, revoked=False)
+
+
+@app.websocket("/ws")
+async def ws(websocket: WebSocket):
+    """Live feed of decisions and revocations.
+
+    Send-only from the gateway's side. The receive loop exists purely to notice the
+    client going away -- without it, a disconnect is only discovered on the next
+    broadcast, so an idle console would linger in the client set indefinitely.
+    """
+    await websocket.accept()
+    broadcaster.clients.add(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        broadcaster.clients.discard(websocket)
 
 
 @app.get("/fleet")
