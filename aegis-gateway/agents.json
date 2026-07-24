@@ -1,0 +1,5 @@
+{
+  "wealth-001": { "role": "wealth_advisory", "cap": 1000 },
+  "hft-001": { "role": "hft", "cap": 5000 },
+  "rogue-001": { "role": "rogue", "cap": 100 }
+}

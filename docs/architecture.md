@@ -42,13 +42,35 @@ concurrent actions could all read the same under-cap total and all be allowed, t
 agent past its cap. Deny reasons are `cap_exceeded` and `no_cap_configured`.
 
 Caps **fail closed**: an agent with no configured cap has no spending authority. Defaults
-are seeded from `aegis-gateway/caps.json` at gateway startup using `SETNX`, so a fresh
-stack works immediately without overwriting a cap an operator has already changed.
+are seeded from `aegis-gateway/agents.json` — the registry of which agents exist, their
+role, and their default cap — at gateway startup using `SETNX`, so a fresh stack works
+immediately without overwriting a cap an operator has already changed.
+
+### Spend is tracked twice, on purpose
+
+Redis holds the running total the cap check reads; the ledger holds the exact
+`NUMERIC(20,2)` record of what was actually allowed. These are different number systems:
+Redis `INCRBYFLOAT` is binary floating point, the ledger is exact decimal. So rather than
+assume they agree, `GET /fleet` reports both and whether they match **to the cent**.
+
+Measured, not assumed: after 1000 transfers of deliberately float-hostile amounts (0.07,
+0.29, 1.10, 0.01, 0.03), Redis held `500.0000000000000045` against an exact ledger total
+of `500.00` — drift of about 4.5e-15, roughly twelve orders of magnitude below one cent.
+Redis accumulates in long double, which is why the drift is far smaller than the ~2.4e-12
+a plain double accumulator showed over the same values.
+
+The ledger, not Redis, is the record of truth for what was spent. Redis is the fast
+enforcement counter. A reconciliation mismatch is meaningful rather than noise: it means
+Redis spend state was reset independently of the ledger, or the two genuinely drifted.
 
 ## Audit ledger
 
 Every decision is appended to Postgres — denials included, since a record of what was
-blocked is the point of the system. Each row stores the hash of the previous row, so
+blocked is the point of the system. Operator actions go into the *same* chain, so hitting
+the kill switch is as tamper-evident as any agent decision: `agent_role` is the actor
+(`operator`), `agent_id` is the subject, and `*` means the whole fleet.
+
+Each row stores the hash of the previous row, so
 altering any historical row breaks both its own hash and the link every later row depends
 on. Schema and the exact hash rule: `ledger/schema.sql`.
 
@@ -66,8 +88,9 @@ only stored columns, so it also works against a database dump or a replica.
 
 ## Services
 
-- **Aegis Gateway** (`aegis-gateway/`) — FastAPI. Runs the three checks and writes the
-  ledger. Endpoints: `GET /health`, `POST /agent-action`.
+- **Aegis Gateway** (`aegis-gateway/`) — FastAPI. Runs the three checks, writes the ledger,
+  and exposes the operator surface. Endpoints: `GET /health`, `POST /agent-action`,
+  `POST /revoke`, `POST /restore`, `GET /fleet`, `GET /audit`.
 - **OPA** (`policies/`) — policy engine, evaluates role/action rules. Policies are mounted
   read-only from `policies/`.
 - **Redis** — kill-switch flags and spend state (`cap:agent:{id}`, `spent:agent:{id}`).
