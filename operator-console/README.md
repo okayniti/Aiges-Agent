@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# operator-console
 
-## Getting Started
+The AegisAgent operator console — a Next.js app for watching the agent fleet and
+driving the kill switch. Built with shadcn/ui (Base UI primitives), Recharts, and
+GSAP on Next.js 16 + Tailwind v4.
 
-First, run the development server:
+## Running it
+
+The console talks to the Aegis Gateway, so bring the stack up first (from the repo
+root):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose -f infra/docker-compose.yml up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then, in `operator-console/`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open http://localhost:3000/fleet.
 
-## Learn More
+## How it talks to the gateway
 
-To learn more about Next.js, take a look at the following resources:
+Mutations never leave the browser carrying the operator key. Instead:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Reads and mutations** go to same-origin Next.js **route handlers** under `/api`
+  (`/api/fleet`, `/api/revoke`, `/api/restore`). Those run server-side, forward to
+  the gateway, and attach the `X-Aegis-Operator-Key` header there. The shared secret
+  stays on the server and is never included in the client bundle.
+- **The live feed** is the one thing the browser opens directly: the gateway's
+  `/ws` WebSocket, which is unauthenticated and send-only, so no secret is exposed.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The Fleet page loads one snapshot from `/api/fleet`, then applies gateway events
+from the WebSocket — it does **not** poll the gateway on every decision. A fresh
+snapshot is pulled on each (re)connect to reconcile anything missed while dropped.
 
-## Deploy on Vercel
+## Configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+All three have sensible dev defaults, so a fresh clone runs against the local stack
+with no `.env` needed. Override in `operator-console/.env.local` for other setups:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Used by | Default | Secret? |
+| --- | --- | --- | --- |
+| `GATEWAY_URL` | route handlers (server) | `http://localhost:8001` | no |
+| `AEGIS_OPERATOR_KEY` | route handlers (server) | `aegis_dev_operator_key` | **yes** — server-only, never `NEXT_PUBLIC_` |
+| `NEXT_PUBLIC_GATEWAY_WS_URL` | browser | `ws://localhost:8001/ws` | no |
+
+`AEGIS_OPERATOR_KEY` is intentionally **not** prefixed `NEXT_PUBLIC_`; that prefix is
+what would place it in the client bundle, which is exactly what the proxy avoids.
