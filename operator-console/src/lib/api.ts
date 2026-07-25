@@ -67,6 +67,108 @@ export function gatewayWsUrl(): string {
   return process.env.NEXT_PUBLIC_GATEWAY_WS_URL ?? "ws://localhost:8001/ws";
 }
 
+// --- Audit ledger ---
+
+export type ChainStatus = {
+  intact: boolean;
+  rows: number;
+  broken_at: number | null;
+  head: string | null;
+};
+
+export type AuditEntry = {
+  id: number;
+  ts: string;
+  agent_id: string;
+  agent_role: string;
+  action: string;
+  amount: string;
+  allowed: boolean;
+  deny_reason: string | null;
+  detail: string | null;
+  hash: string;
+  prev_hash: string;
+};
+
+export type AuditResponse = { chain: ChainStatus; entries: AuditEntry[] };
+
+export async function fetchAudit(limit = 100): Promise<AuditResponse> {
+  const res = await fetch(`/api/audit?limit=${limit}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`audit request failed: ${res.status}`);
+  return res.json();
+}
+
+// A ledger row as it appears in the live feed, whether it arrived in the initial
+// /audit snapshot or as a WebSocket event. Mapping both to one shape lets the feed
+// render a single, deduplicated, newest-first list.
+export type FeedRow = {
+  id: number;
+  ts: string;
+  agent_id: string;
+  agent_role: string;
+  action: string;
+  amount: string | null;
+  allowed: boolean;
+  deny_reason: string | null;
+  detail: string | null;
+  hash: string;
+};
+
+export function entryToFeedRow(e: AuditEntry): FeedRow {
+  return {
+    id: e.id,
+    ts: e.ts,
+    agent_id: e.agent_id,
+    agent_role: e.agent_role,
+    action: e.action,
+    amount: e.amount,
+    allowed: e.allowed,
+    deny_reason: e.deny_reason,
+    detail: e.detail,
+    hash: e.hash,
+  };
+}
+
+// A gateway event carries the ledger_id and hash of the row it wrote, so the feed
+// can present operator actions and decisions the same way the ledger stores them.
+export function eventToFeedRow(ev: GatewayEvent): FeedRow {
+  const base = { id: ev.ledger_id, ts: ev.ts, hash: ev.hash };
+  if (ev.type === "decision") {
+    return {
+      ...base,
+      agent_id: ev.agent_id,
+      agent_role: ev.agent_role,
+      action: ev.action,
+      amount: ev.amount,
+      allowed: ev.allowed,
+      deny_reason: ev.deny_reason,
+      detail: null,
+    };
+  }
+  if (ev.type === "revocation") {
+    return {
+      ...base,
+      agent_id: ev.subject,
+      agent_role: "operator",
+      action: ev.revoked ? "revoke" : "restore",
+      amount: null,
+      allowed: true,
+      deny_reason: null,
+      detail: ev.scope === "fleet" ? "scope=fleet" : null,
+    };
+  }
+  return {
+    ...base,
+    agent_id: ev.agent_id,
+    agent_role: "operator",
+    action: "cap_change",
+    amount: ev.cap,
+    allowed: true,
+    deny_reason: null,
+    detail: ev.previous_cap === null ? null : `prev_cap=${ev.previous_cap}`,
+  };
+}
+
 export async function fetchFleet(): Promise<FleetResponse> {
   const res = await fetch("/api/fleet", { cache: "no-store" });
   if (!res.ok) throw new Error(`fleet request failed: ${res.status}`);

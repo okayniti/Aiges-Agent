@@ -86,6 +86,20 @@ reimplements the hash rule from the schema rather than importing the gateway's c
 verifier sharing code with the writer only proves the writer is self-consistent. It reads
 only stored columns, so it also works against a database dump or a replica.
 
+### Cost of `GET /audit`
+
+The chain-integrity check `GET /audit` returns walks the whole ledger, not just the
+returned window, because a window cannot prove its own prefix. That is O(rows). Measured
+against 8,039 rows: min 87 ms, median 98 ms, p90 137 ms. A bare "recent 50 rows" query is
+~10 ms, so the remaining ~88 ms is the full-chain verify. It grows linearly — roughly
+0.5 s at 40k rows, 1 s at 80k.
+
+This is left as-is on purpose. The console's audit page calls `/audit` only on load and on
+an explicit "re-verify", never per event — its live feed rides `/ws` — so the O(rows) cost
+never sits on the hot path, and ~100 ms for a load/re-verify is fine at demo scale. If a
+deployment kept a very long ledger hot, the fix would be a periodic verified checkpoint
+(store the last known-good id/hash and verify only rows since), not a change to the rule.
+
 ## Live event feed
 
 `GET /ws` (WebSocket) streams every decision and every revocation as it happens, so the
@@ -178,8 +192,10 @@ allowed. A `cap_change` records the new cap in `amount` and the previous cap in 
 
 Listed so this document is not read as claiming more than exists:
 
-- **Console wiring.** The gateway exposes everything the console needs (`/fleet`, `/audit`,
-  `/ws`, `/revoke`), but `operator-console/` does not call any of it yet.
+- **Policy page.** The console's Fleet and Audit pages are wired to the gateway (live over
+  `/ws`, with mutations proxied through Next route handlers so the operator key stays
+  server-side). The policy page is still a placeholder — it does not yet read the enforced
+  permissions or offer cap editing.
 - **Agent reasoning is not wired into gateway requests.** `agents/groq_agent.py` can produce
   real LLM reasoning, but `POST /agent-action` has no field to carry a rationale, so the
   fleet's actions are scripted rather than model-chosen. Adding a rationale to the request
