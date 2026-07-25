@@ -189,6 +189,48 @@ async function mutate(path: string, body: RevokeBody): Promise<void> {
   }
 }
 
+// --- Policy ---
+
+export type PolicyAgent = {
+  id: string;
+  role: string;
+  cap: string | null;
+  permitted_actions: string[];
+};
+
+export type PolicyResponse = {
+  roles: Record<string, string[]>;
+  agents: PolicyAgent[];
+};
+
+export async function fetchPolicy(): Promise<PolicyResponse> {
+  const res = await fetch("/api/policy", { cache: "no-store" });
+  if (!res.ok) throw new Error(`policy request failed: ${res.status}`);
+  return res.json();
+}
+
+export type CapChangeResult = {
+  agent_id: string;
+  previous_cap: string | null;
+  cap: string;
+};
+
+export async function setAgentCap(
+  agentId: string,
+  cap: number,
+): Promise<CapChangeResult> {
+  const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/cap`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cap }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`cap update failed: ${res.status} ${detail}`);
+  }
+  return res.json();
+}
+
 export function revokeAgent(agentId: string) {
   return mutate("/api/revoke", { scope: "agent", agent_id: agentId });
 }

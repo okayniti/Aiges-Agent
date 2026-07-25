@@ -17,6 +17,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocke
 from pydantic import BaseModel, Field
 
 OPA_AUTHZ_URL = "http://opa:8181/v1/data/aegis/authz"
+OPA_PERMISSIONS_URL = "http://opa:8181/v1/data/permissions"
 REDIS_URL = "redis://redis:6379"
 POSTGRES_DSN = "postgresql://postgres:aegis_dev_password@postgres:5432/aegis"
 AGENTS_FILE = Path(__file__).parent / "agents.json"
@@ -522,6 +523,39 @@ async def fleet():
         )
 
     return {"fleet_revoked": fleet_revoked, "agents": agents}
+
+
+@app.get("/policy")
+async def policy():
+    """Read-only view of what the gateway actually enforces.
+
+    Permissions come straight from OPA's loaded data — the same `data.permissions`
+    the authz policy evaluates on every action — not a copy kept in this service,
+    so the console cannot show a rule that differs from the one in force. Caps come
+    from Redis, where the spend check reads them. If OPA's policy data changes, this
+    endpoint reflects it on the next call with no gateway change.
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(OPA_PERMISSIONS_URL)
+        response.raise_for_status()
+    roles = response.json().get("result") or {}
+
+    agents = []
+    for agent_id, entry in agent_registry.items():
+        role = entry["role"]
+        cap_raw = await redis_client.get(f"cap:agent:{agent_id}")
+        agents.append(
+            {
+                "id": agent_id,
+                "role": role,
+                "cap": str(Decimal(cap_raw).quantize(Decimal("0.01")))
+                if cap_raw is not None
+                else None,
+                "permitted_actions": roles.get(role, []),
+            }
+        )
+
+    return {"roles": roles, "agents": agents}
 
 
 @app.get("/audit")

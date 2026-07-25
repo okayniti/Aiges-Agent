@@ -18,6 +18,8 @@ where policy checks and budget checks happen, so no action can bypass governance
   shows the whole move. Only the cap changes; spend is left as-is. Unknown agent is a 404.
 - `GET /fleet` — every registered agent's role, cap, spend, remaining, and revoked state,
   plus the Redis-vs-ledger spend reconciliation.
+- `GET /policy` — what the gateway enforces: role→action permissions read live from OPA's
+  `data.permissions`, plus each agent's role and current cap. A read, no key required.
 - `GET /audit?limit=50` — recent ledger entries newest-first, plus chain integrity.
 - `GET /ws` — WebSocket. Streams every decision, revocation, and cap change as it happens,
   each event carrying the `ledger_id` and `hash` of the row it corresponds to. Send-only;

@@ -163,7 +163,7 @@ as every agent flipping to `revoked` and back without any of them pausing.
 - **Aegis Gateway** (`aegis-gateway/`) — FastAPI. Runs the three checks, writes the ledger,
   and exposes the operator surface. Endpoints: `GET /health`, `POST /agent-action`,
   `POST /revoke`, `POST /restore`, `POST /agents/{id}/cap`, `GET /fleet`, `GET /audit`,
-  `GET /ws` (WebSocket). The three mutating endpoints require the operator key.
+  `GET /policy`, `GET /ws` (WebSocket). The three mutating endpoints require the operator key.
 - **OPA** (`policies/`) — policy engine, evaluates role/action rules. Policies are mounted
   read-only from `policies/`.
 - **Redis** — kill-switch flags and spend state (`cap:agent:{id}`, `spent:agent:{id}`).
@@ -188,14 +188,25 @@ limit would leave the ledger telling a misleading story about why a later transf
 allowed. A `cap_change` records the new cap in `amount` and the previous cap in `detail`
 (`prev_cap=…`), so the chain shows the whole move, not just where it landed.
 
+## Policy view
+
+`GET /policy` returns what the gateway actually enforces: the role→action permissions are
+read straight from OPA's loaded `data.permissions` — the same data the authz policy
+evaluates on every action — and the caps from Redis, where the spend check reads them.
+Nothing is copied into the gateway, so the view cannot drift from the rule in force.
+Changing OPA's permission data moves both this view and the enforced decision together; the
+console's policy page renders permissions read-only for that reason and only exposes cap
+editing (through the keyed `/agents/{id}/cap` path). This is a read, so it needs no key.
+
 ## Not built yet
 
 Listed so this document is not read as claiming more than exists:
 
-- **Policy page.** The console's Fleet and Audit pages are wired to the gateway (live over
-  `/ws`, with mutations proxied through Next route handlers so the operator key stays
-  server-side). The policy page is still a placeholder — it does not yet read the enforced
-  permissions or offer cap editing.
+- **Editing permissions from the console.** All three console pages (Fleet, Audit, Policy)
+  are wired to the gateway, live over `/ws`, with mutations proxied through Next route
+  handlers so the operator key stays server-side. The policy page shows permissions
+  read-only and edits caps; changing which actions a role may take still means editing the
+  OPA policy data directly, not through the console.
 - **Agent reasoning is not wired into gateway requests.** `agents/groq_agent.py` can produce
   real LLM reasoning, but `POST /agent-action` has no field to carry a rationale, so the
   fleet's actions are scripted rather than model-chosen. Adding a rationale to the request
