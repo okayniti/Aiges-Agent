@@ -38,6 +38,7 @@ def expected_hash(prev_hash, row):
             "amount": f"{row['amount']:.2f}",
             "allowed": row["allowed"],
             "deny_reason": row["deny_reason"],
+            "detail": row["detail"],
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -51,7 +52,7 @@ async def main():
         rows = await conn.fetch(
             """
             SELECT id, ts, agent_id, agent_role, action, amount,
-                   allowed, deny_reason, prev_hash, hash
+                   allowed, deny_reason, detail, prev_hash, hash
             FROM audit_log ORDER BY id
             """
         )

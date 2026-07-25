@@ -45,6 +45,9 @@ services:
   gateway:
     build:
       context: ../aegis-gateway
+    environment:
+      # Dev default so a fresh clone runs. Override in .env for anything shared.
+      AEGIS_OPERATOR_KEY: ${AEGIS_OPERATOR_KEY:-aegis_dev_operator_key}
     ports:
       - "8001:8000"
     healthcheck:

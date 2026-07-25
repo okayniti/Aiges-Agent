@@ -13,9 +13,13 @@
 --     sha256(prev_hash || canonical_payload)
 -- where canonical_payload is compact JSON with sorted keys and no whitespace:
 --     {"action":...,"agent_id":...,"agent_role":...,"allowed":...,
---      "amount":"0.00","deny_reason":...,"ts":...}
+--      "amount":"0.00","deny_reason":...,"detail":...,"ts":...}
 -- amount is always rendered to exactly two decimal places, and ts is an ISO-8601
 -- UTC timestamp, so the payload is reproducible from the stored row alone.
+--
+-- detail carries context the fixed columns cannot: for a cap_change it records
+-- the previous cap ("prev_cap=100.00"), so the ledger shows both the old and new
+-- limit rather than only the new one. It is null for rows that need no context.
 --
 -- The first row's prev_hash is the genesis value: 64 zeros.
 
@@ -28,6 +32,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
     amount      NUMERIC(20,2) NOT NULL,
     allowed     BOOLEAN       NOT NULL,
     deny_reason TEXT,
+    detail      TEXT,
     prev_hash   TEXT          NOT NULL,
     hash        TEXT          NOT NULL UNIQUE
 );

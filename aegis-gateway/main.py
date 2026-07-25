@@ -2,6 +2,8 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import os
+import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -11,8 +13,8 @@ from typing import Literal
 import asyncpg
 import httpx
 import redis.asyncio as redis
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
 
 OPA_AUTHZ_URL = "http://opa:8181/v1/data/aegis/authz"
 REDIS_URL = "redis://redis:6379"
@@ -40,6 +42,16 @@ FLEET_SUBJECT = "*"
 # balancer, a console attached to replica A would silently miss every decision
 # handled by replica B. Publishing to Redis means any replica can serve any client.
 EVENT_CHANNEL = "aegis:events"
+
+# A single shared key guarding the endpoints that change what the system will
+# allow. Deliberately not a user or session system -- this is one operator console
+# talking to one gateway, and inventing accounts here would add surface without
+# adding safety.
+#
+# Read at import so a missing key is a startup-visible condition rather than a
+# surprise on the first revoke.
+OPERATOR_KEY = os.environ.get("AEGIS_OPERATOR_KEY", "")
+OPERATOR_KEY_HEADER = "X-Aegis-Operator-Key"
 
 # Check-and-increment of an agent's spend against its cap, run inside Redis so the
 # whole thing is one atomic step. Splitting it into GET-then-INCRBYFLOAT would let
@@ -154,6 +166,31 @@ class RevokeRequest(BaseModel):
     agent_id: str | None = None
 
 
+class CapChangeRequest(BaseModel):
+    # gt=0 rather than ge=0: a zero cap would read as "no spending allowed" but is
+    # indistinguishable from a misconfiguration. Revoke the agent for that.
+    cap: Decimal = Field(gt=0, max_digits=20, decimal_places=2)
+
+
+async def require_operator(
+    provided_key: str | None = Header(default=None, alias=OPERATOR_KEY_HEADER),
+) -> None:
+    """Guard the endpoints that change what the system will allow.
+
+    Fails closed when no key is configured. An unset key means the deployment is
+    misconfigured, and the safe reading of that is "nobody may change the rules",
+    not "everybody may".
+    """
+    if not OPERATOR_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="operator key not configured; refusing operator actions",
+        )
+    # Constant-time so a wrong key cannot be narrowed down by timing the response.
+    if not secrets.compare_digest(provided_key or "", OPERATOR_KEY):
+        raise HTTPException(status_code=401, detail="invalid or missing operator key")
+
+
 def canonical_payload(
     ts: datetime,
     agent_id: str,
@@ -162,6 +199,7 @@ def canonical_payload(
     amount: Decimal,
     allowed: bool,
     deny_reason: str | None,
+    detail: str | None,
 ) -> str:
     """Render a decision to the exact bytes that get hashed.
 
@@ -178,6 +216,7 @@ def canonical_payload(
             "amount": f"{amount:.2f}",
             "allowed": allowed,
             "deny_reason": deny_reason,
+            "detail": detail,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -195,6 +234,7 @@ async def append_ledger(
     amount: Decimal,
     allowed: bool,
     deny_reason: str | None,
+    detail: str | None = None,
 ) -> dict:
     """Append one entry to the hash-chained ledger and return how it was recorded.
 
@@ -210,14 +250,14 @@ async def append_ledger(
                 or GENESIS_HASH
             )
             payload = canonical_payload(
-                ts, agent_id, agent_role, action, amount, allowed, deny_reason
+                ts, agent_id, agent_role, action, amount, allowed, deny_reason, detail
             )
             row = await conn.fetchrow(
                 """
                 INSERT INTO audit_log (
                     ts, agent_id, agent_role, action, amount,
-                    allowed, deny_reason, prev_hash, hash
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    allowed, deny_reason, detail, prev_hash, hash
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 RETURNING id, hash
                 """,
                 ts,
@@ -227,6 +267,7 @@ async def append_ledger(
                 amount,
                 allowed,
                 deny_reason,
+                detail,
                 prev_hash,
                 row_hash(prev_hash, payload),
             )
@@ -352,14 +393,57 @@ async def set_revocation(request: RevokeRequest, revoked: bool) -> dict:
     return {"scope": request.scope, "agent_id": request.agent_id, "revoked": revoked}
 
 
-@app.post("/revoke")
+@app.post("/revoke", dependencies=[Depends(require_operator)])
 async def revoke(request: RevokeRequest):
     return await set_revocation(request, revoked=True)
 
 
-@app.post("/restore")
+@app.post("/restore", dependencies=[Depends(require_operator)])
 async def restore(request: RevokeRequest):
     return await set_revocation(request, revoked=False)
+
+
+@app.post("/agents/{agent_id}/cap", dependencies=[Depends(require_operator)])
+async def set_cap(agent_id: str, request: CapChangeRequest):
+    """Change an agent's spend cap.
+
+    Recorded in the same hash chain as revocations. Raising a cap is as much a
+    governance decision as blocking an action, and an operator who could quietly
+    lift a limit would leave the ledger telling a misleading story about why a
+    later transfer was allowed. The `amount` column holds the new cap and `detail`
+    the previous one, so the chain shows the whole move, not just where it landed.
+
+    Only the cap moves; spend is left alone. Resetting an agent's spent total is a
+    different decision and should be made explicitly rather than as a side effect.
+    """
+    if agent_id not in agent_registry:
+        raise HTTPException(status_code=404, detail=f"unknown agent: {agent_id}")
+
+    cap = request.cap.quantize(Decimal("0.01"))
+    previous = await redis_client.get(f"cap:agent:{agent_id}")
+    await redis_client.set(f"cap:agent:{agent_id}", str(cap))
+
+    recorded = await append_ledger(
+        agent_id,
+        OPERATOR_ROLE,
+        "cap_change",
+        cap,
+        True,
+        None,
+        detail=f"prev_cap={previous}",
+    )
+    await publish_event(
+        {
+            "type": "cap_change",
+            "ts": recorded["ts"],
+            "ledger_id": recorded["ledger_id"],
+            "hash": recorded["hash"],
+            "agent_id": agent_id,
+            "previous_cap": previous,
+            "cap": str(cap),
+        }
+    )
+    return {"agent_id": agent_id, "previous_cap": previous, "cap": str(cap)}
 
 
 @app.websocket("/ws")
@@ -459,7 +543,7 @@ async def audit(limit: int = 50):
         rows = await conn.fetch(
             """
             SELECT id, ts, agent_id, agent_role, action, amount,
-                   allowed, deny_reason, prev_hash, hash
+                   allowed, deny_reason, detail, prev_hash, hash
             FROM audit_log ORDER BY id
             """
         )
@@ -476,6 +560,7 @@ async def audit(limit: int = 50):
             row["amount"],
             row["allowed"],
             row["deny_reason"],
+            row["detail"],
         )
         if row["prev_hash"] != prev_hash or row_hash(row["prev_hash"], payload) != row["hash"]:
             intact = False
@@ -502,6 +587,7 @@ async def audit(limit: int = 50):
                 "amount": str(row["amount"]),
                 "allowed": row["allowed"],
                 "deny_reason": row["deny_reason"],
+                "detail": row["detail"],
                 "hash": row["hash"],
                 "prev_hash": row["prev_hash"],
             }

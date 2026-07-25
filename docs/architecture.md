@@ -148,7 +148,8 @@ as every agent flipping to `revoked` and back without any of them pausing.
 
 - **Aegis Gateway** (`aegis-gateway/`) — FastAPI. Runs the three checks, writes the ledger,
   and exposes the operator surface. Endpoints: `GET /health`, `POST /agent-action`,
-  `POST /revoke`, `POST /restore`, `GET /fleet`, `GET /audit`, `GET /ws` (WebSocket).
+  `POST /revoke`, `POST /restore`, `POST /agents/{id}/cap`, `GET /fleet`, `GET /audit`,
+  `GET /ws` (WebSocket). The three mutating endpoints require the operator key.
 - **OPA** (`policies/`) — policy engine, evaluates role/action rules. Policies are mounted
   read-only from `policies/`.
 - **Redis** — kill-switch flags and spend state (`cap:agent:{id}`, `spent:agent:{id}`).
@@ -156,6 +157,22 @@ as every agent flipping to `revoked` and back without any of them pausing.
   init of an empty data directory.
 
 All four run via `infra/docker-compose.yml`.
+
+## Operator control
+
+Three endpoints change what the system will allow: `/revoke` and `/restore` (kill or
+reinstate an agent or the whole fleet) and `/agents/{id}/cap` (set a spend cap). All three
+require a shared secret in the `X-Aegis-Operator-Key` header; without it, or with the wrong
+value, the request is a 401. It is deliberately one shared key rather than a user/session
+system — one console, one gateway — read from `AEGIS_OPERATOR_KEY`. If that variable is
+unset the gateway fails closed, returning 503 on every operator endpoint: an unconfigured
+key means nobody may change the rules, not everybody.
+
+Every operator action is appended to the same hash chain as agent decisions, so changing a
+cap is as tamper-evident as blocking a transfer. An operator who could quietly raise a
+limit would leave the ledger telling a misleading story about why a later transfer was
+allowed. A `cap_change` records the new cap in `amount` and the previous cap in `detail`
+(`prev_cap=…`), so the chain shows the whole move, not just where it landed.
 
 ## Not built yet
 
@@ -171,9 +188,10 @@ Listed so this document is not read as claiming more than exists:
   pages for fleet, policy, and audit. It does not talk to the gateway.
 - **Banking API forwarding.** An allowed action returns `{"allow": true}`. The gateway does
   not yet forward anything downstream.
-- **Authentication.** `/agent-action` is unauthenticated; any caller can claim any agent
-  id and role. This is a demo-scoped gap, and a real deployment would need agent identity
-  bound to a credential rather than asserted in the request body.
+- **Agent identity.** `/agent-action` is unauthenticated; any caller can claim any agent id
+  and role. The *operator* endpoints are now key-protected (see below), but agent-side
+  identity is not: a real deployment would bind it to a credential rather than trust the
+  request body. This is the remaining demo-scoped auth gap.
 
 ## On the NEAR AI / TEE claim
 
