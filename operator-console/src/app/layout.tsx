@@ -52,10 +52,9 @@ export default function RootLayout({
               ))}
             </nav>
           </div>
-          {/* Placeholder kill-switch status chip — wired to real state in a later task */}
-          <div className="rounded border border-slate-800 px-3 py-2 text-xs text-slate-400">
-            Kill switch: <span className="text-[#17C3A2]">armed</span>
-          </div>
+          {/* Real kill-switch state lives on the Fleet page's own live banner
+              (fleet/page.tsx), not here — a static sidebar chip would go stale
+              the moment it disagreed with that banner, so it isn't duplicated. */}
         </aside>
         <main className="flex-1">{children}</main>
       </body>

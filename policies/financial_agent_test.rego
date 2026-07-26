@@ -28,3 +28,18 @@ test_deny_rogue_any_action if {
 		"amount": 50,
 	}
 }
+
+# Deny-by-default, not just role-scoped deny: an action absent from every role's
+# vocabulary is refused even for a role that otherwise has real permissions.
+test_deny_unknown_action_for_permitted_role if {
+	not allow with input as {
+		"agent": {"id": "wealth-001", "role": "wealth_advisory"},
+		"action": "exfiltrate_funds",
+		"amount": 10,
+	}
+	deny_reason == "action_not_permitted" with input as {
+		"agent": {"id": "wealth-001", "role": "wealth_advisory"},
+		"action": "exfiltrate_funds",
+		"amount": 10,
+	}
+}
