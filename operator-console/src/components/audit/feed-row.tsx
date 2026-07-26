@@ -26,12 +26,16 @@ export function FeedRowItem({ row, fresh }: { row: FeedRow; fresh: boolean }) {
 
   useEffect(() => {
     if (!fresh || !ref.current) return;
-    gsap.from(ref.current, {
-      opacity: 0,
-      y: -8,
-      duration: duration.base,
-      ease: "power2.out",
-    });
+    // fromTo, never from: `from` infers its destination from whatever the element
+    // currently is, so if this effect runs twice (React re-invokes effects on
+    // mount in development) the second pass reads the first pass's start value —
+    // opacity 0 — as the destination and tweens 0 to 0, leaving the row
+    // permanently invisible. Stating both ends makes re-running it harmless.
+    gsap.fromTo(
+      ref.current,
+      { opacity: 0, y: -8 },
+      { opacity: 1, y: 0, duration: duration.base, ease: "power2.out" },
+    );
     gsap.fromTo(
       ref.current,
       { backgroundColor: "rgba(23,195,162,0.14)" },

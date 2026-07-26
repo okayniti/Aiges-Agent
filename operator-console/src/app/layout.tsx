@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
 import "./globals.css";
+
+import { GatewayProvider } from "@/lib/gateway-store";
+import { ConsoleHeader } from "@/components/console-header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,12 +20,6 @@ export const metadata: Metadata = {
   description: "Fleet control, policy, and audit for autonomous financial agents.",
 };
 
-const navItems = [
-  { href: "/fleet", label: "Fleet Overview" },
-  { href: "/policy", label: "Policy Editor" },
-  { href: "/audit", label: "Live Audit Feed" },
-];
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,31 +28,27 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable}`}
+      // The whole console is one scrolling document, so anchor jumps and the
+      // scroll-spy both want smooth behaviour handled by the browser rather than
+      // a scroll-hijacking library.
+      style={{ scrollBehavior: "smooth" }}
     >
-      <body className="min-h-full flex bg-[#0B1220] text-slate-100">
-        <aside className="w-56 shrink-0 border-r border-slate-800 flex flex-col justify-between p-4">
-          <div>
-            <div className="text-sm font-semibold tracking-wide text-slate-300 mb-6">
-              AegisAgent
-            </div>
-            <nav className="flex flex-col gap-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          {/* Real kill-switch state lives on the Fleet page's own live banner
-              (fleet/page.tsx), not here — a static sidebar chip would go stale
-              the moment it disagreed with that banner, so it isn't duplicated. */}
-        </aside>
-        <main className="flex-1">{children}</main>
+      <body className="min-h-dvh bg-[#070c16] text-slate-200 antialiased">
+        {/* Fixed background wash. It does not scroll, so the panels read as
+            floating past it rather than sitting on a flat page. */}
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 -z-10"
+          style={{
+            background:
+              "radial-gradient(900px 500px at 20% -5%, rgba(23,195,162,0.09), transparent 60%), radial-gradient(700px 500px at 90% 10%, rgba(56,89,145,0.10), transparent 65%), #070c16",
+          }}
+        />
+        <GatewayProvider>
+          <ConsoleHeader />
+          <main>{children}</main>
+        </GatewayProvider>
       </body>
     </html>
   );

@@ -3,23 +3,17 @@
 import { useRef, useState } from "react";
 import gsap from "gsap";
 
-import { setAgentCap } from "@/lib/api";
 import { duration } from "@/lib/motion-tokens";
+import { useGateway } from "@/lib/gateway-store";
 import { Button } from "@/components/ui/button";
 
 const ACCENT = "#17C3A2";
 
-// Edits one agent's spend cap. The POST goes to the same-origin route handler,
-// which attaches the operator key server-side — the key never reaches here.
-export function CapEditor({
-  agentId,
-  cap,
-  onSaved,
-}: {
-  agentId: string;
-  cap: string | null;
-  onSaved: (newCap: string) => void;
-}) {
+// Edits one agent's spend cap. The write goes through the shared store, which
+// POSTs to the same-origin route handler; that handler attaches the operator key
+// server-side, so the key never reaches this component.
+export function CapEditor({ agentId, cap }: { agentId: string; cap: string | null }) {
+  const { saveCap } = useGateway();
   const [value, setValue] = useState(cap ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +30,8 @@ export function CapEditor({
     setSaving(true);
     setError(null);
     try {
-      const result = await setAgentCap(agentId, n);
-      onSaved(result.cap);
-      setValue(result.cap);
+      const saved = await saveCap(agentId, n);
+      setValue(saved);
       if (capRef.current) {
         gsap.fromTo(
           capRef.current,
@@ -54,12 +47,16 @@ export function CapEditor({
   }
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">cap</span>
-        <span ref={capRef} className="font-mono tabular-nums">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-slate-500">
+          Current cap
+        </span>
+        <span ref={capRef} className="font-mono text-lg tabular-nums text-slate-100">
           {cap === null ? "—" : Number(cap).toFixed(2)}
         </span>
+      </div>
+      <div className="flex items-center gap-2">
         <input
           type="number"
           min="0"
@@ -69,10 +66,18 @@ export function CapEditor({
           onKeyDown={(e) => {
             if (e.key === "Enter" && dirty && !saving) void save();
           }}
-          className="h-7 w-28 rounded-md border border-input bg-input/30 px-2 text-sm font-mono outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="h-8 w-full rounded-md border border-slate-700 bg-slate-900/60 px-2.5 font-mono text-sm text-slate-100 outline-none focus-visible:border-[#17C3A2] focus-visible:ring-2 focus-visible:ring-[#17C3A2]/30"
           aria-label={`new cap for ${agentId}`}
         />
-        <Button size="sm" variant="outline" disabled={saving || !dirty} onClick={save}>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={saving || !dirty}
+          onClick={save}
+          // The page carries one of these per agent, so the visible label alone
+          // is ambiguous to a screen reader (and to a test).
+          aria-label={`save cap for ${agentId}`}
+        >
           {saving ? "Saving…" : "Save"}
         </Button>
       </div>
