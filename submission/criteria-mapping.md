@@ -9,7 +9,7 @@ unconfident, not thorough.
 **The four criteria:** Relevance · Idea Articulation · Technical Solution &
 Innovation · Implementation & Impact.
 
-## Project Description (`AegisAgent_Project_Description.docx`)
+## Project Description (`AegisAgent_Project_Description_new.docx`)
 
 | § | Section | Primary criterion | Secondary |
 |---|---|---|---|
