@@ -206,7 +206,7 @@ panel today reports real client-measured round trips, explicitly not the same
 measurement as server-side enforcement overhead).
 
 The full breakdown, with evidence for every line: [`docs/architecture.md`](docs/architecture.md)'s
-"Not built yet" section and §10 of [`submission/AegisAgent_Project_Description.docx`](submission/AegisAgent_Project_Description.docx).
+"Not built yet" section and §10 of [`submission/AegisAgent_Project_Description_new.docx`](submission/AegisAgent_Project_Description_new.docx).
 
 ## Repository layout
 

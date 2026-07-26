@@ -8,24 +8,24 @@ at the bottom, not glossed over.
 
 | Guideline item | Covered by |
 |---|---|
-| Problem statement selected | `AegisAgent_Project_Description.docx` — header block + §2 |
-| Proposed solution | `AegisAgent_Project_Description.docx` §1, §3 · `AegisAgent_Pitch_Deck.pptx` slides 1–3 |
-| Expected business or societal impact | `AegisAgent_Project_Description.docx` §9 · `AegisAgent_Pitch_Deck.pptx` slide 11 |
+| Problem statement selected | `AegisAgent_Project_Description_new.docx` — header block + §2 |
+| Proposed solution | `AegisAgent_Project_Description_new.docx` §1, §3 · `AegisAgent_Pitch_Deck.pptx` slides 1–3 |
+| Expected business or societal impact | `AegisAgent_Project_Description_new.docx` §9 · `AegisAgent_Pitch_Deck.pptx` slide 11 |
 | Success metrics | ⚠️ Partial — see gap note below |
-| Implementation approach | `AegisAgent_Project_Description.docx` §10–11 · `implementation-guide.md` (supporting doc) |
+| Implementation approach | `AegisAgent_Project_Description_new.docx` §10–11 · `implementation-guide.md` (supporting doc) |
 
 ## Technical Details
 
 | Guideline item | Covered by |
 |---|---|
-| Technology stack | `AegisAgent_Project_Description.docx` §4 (table) · `AegisAgent_Pitch_Deck.pptx` slide 4 |
+| Technology stack | `AegisAgent_Project_Description_new.docx` §4 (table) · `AegisAgent_Pitch_Deck.pptx` slide 4 |
 | Frameworks | Same — FastAPI, OPA/Rego, Redis, PostgreSQL, Next.js named explicitly |
 | Architecture diagram | `AegisAgent_Pitch_Deck.pptx` slide 4 (box-and-arrow flow) |
-| Flow charts | `AegisAgent_Project_Description.docx` §6 (numbered sequential steps) |
+| Flow charts | `AegisAgent_Project_Description_new.docx` §6 (numbered sequential steps) |
 | Wireframes | ❌ Not included — see gap note below |
 | Graphical representations | `AegisAgent_Pitch_Deck.pptx` (cards, stat rows, timeline) + real screenshots |
-| Assumptions and constraints | `AegisAgent_Project_Description.docx` §8 |
-| Scalability considerations | `AegisAgent_Project_Description.docx` §8 (Scalability bullet) + §5.5 |
+| Assumptions and constraints | `AegisAgent_Project_Description_new.docx` §8 |
+| Scalability considerations | `AegisAgent_Project_Description_new.docx` §8 (Scalability bullet) + §5.5 |
 
 ## Optional Supporting Assets
 
@@ -38,7 +38,7 @@ at the bottom, not glossed over.
 
 ## Full file list to upload
 
-- [ ] `AegisAgent_Project_Description.docx`
+- [ ] `AegisAgent_Project_Description_new.docx`
 - [ ] `AegisAgent_Pitch_Deck.pptx`
 - [ ] `demo-screenshots/01-normal-operation-wealth-hft-allowed.png`
 - [ ] `demo-screenshots/02-rogue-agent-denied.png`
