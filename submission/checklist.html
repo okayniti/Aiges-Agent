@@ -1,0 +1,454 @@
+<title>AegisAgent — Round 1 Submission Checklist</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --bg-raised: #111a2c;
+    --border: rgba(255,255,255,0.09);
+    --text: #e7ecf3;
+    --muted: #8b99af;
+    --accent: #17c3a2;
+    --done: #17c3a2;
+    --done-bg: rgba(23,195,162,0.12);
+    --missing: #f4506a;
+    --missing-bg: rgba(244,80,106,0.12);
+    --partial: #f5a623;
+    --partial-bg: rgba(245,166,35,0.12);
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f8f8;
+    --bg-raised: #ffffff;
+    --border: #dfe6e6;
+    --text: #101820;
+    --muted: #5b6b72;
+    --accent: #0f7666;
+    --done: #0f7666;
+    --done-bg: rgba(15,118,102,0.09);
+    --missing: #c22f47;
+    --missing-bg: rgba(194,47,71,0.08);
+    --partial: #9a6608;
+    --partial-bg: rgba(154,102,8,0.09);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f5f8f8;
+      --bg-raised: #ffffff;
+      --border: #dfe6e6;
+      --text: #101820;
+      --muted: #5b6b72;
+      --accent: #0f7666;
+      --done: #0f7666;
+      --done-bg: rgba(15,118,102,0.09);
+      --missing: #c22f47;
+      --missing-bg: rgba(194,47,71,0.08);
+      --partial: #9a6608;
+      --partial-bg: rgba(154,102,8,0.09);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono {
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas,
+                 "Liberation Mono", monospace;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 5rem;
+  }
+
+  header.top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  h1 {
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0.35rem 0 0.4rem;
+    text-wrap: balance;
+  }
+  .sub { color: var(--muted); font-size: 0.92rem; max-width: 46ch; }
+
+  .counter {
+    flex: none;
+    text-align: right;
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    padding-top: 0.2rem;
+  }
+  .counter .n {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .counter .of { color: var(--muted); font-size: 0.85rem; }
+
+  section.group { margin-bottom: 1.75rem; }
+  .group-title {
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 0.6rem 2px;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .group-title .count {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .panel {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .item {
+    display: grid;
+    grid-template-columns: 1.6rem 1fr;
+    gap: 0.7rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    align-items: start;
+  }
+  .item:last-child { border-bottom: none; }
+
+  input[type="checkbox"] {
+    appearance: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.15rem;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    flex: none;
+  }
+  input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  input[type="checkbox"]:checked {
+    background: var(--done-bg);
+    border-color: var(--done);
+  }
+  input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.32rem;
+    top: 0.1rem;
+    width: 0.3rem;
+    height: 0.55rem;
+    border: solid var(--done);
+    border-width: 0 2px 2px 0;
+    transform: rotate(40deg);
+  }
+
+  .item-body { min-width: 0; }
+  .item-label { font-size: 0.93rem; }
+  .dest {
+    display: block;
+    margin-top: 0.28rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+  .dest .file { color: var(--text); }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.14rem 0.5rem;
+    border-radius: 999px;
+    margin-left: 0.55rem;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .chip.partial { background: var(--partial-bg); color: var(--partial); }
+  .chip.missing { background: var(--missing-bg); color: var(--missing); }
+
+  .callout {
+    border-left: 3px solid var(--missing);
+    background: var(--missing-bg);
+    border-radius: 0 8px 8px 0;
+    padding: 0.9rem 1.1rem;
+    margin-top: 0.9rem;
+  }
+  .callout .lbl {
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--missing);
+    margin-bottom: 0.35rem;
+  }
+  .callout p { margin: 0; font-size: 0.86rem; color: var(--muted); }
+  .callout p + p { margin-top: 0.5rem; }
+  .callout code { color: var(--text); }
+
+  code {
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.85em;
+  }
+
+  footer.note {
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    input[type="checkbox"] { transition: background 0.12s ease, border-color 0.12s ease; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Amex CodeStreet 2026 · Round 1</div>
+      <h1>AegisAgent — Submission Checklist</h1>
+      <div class="sub">Every mandatory and optional guideline item, mapped to the exact file. Check items off as you finalize them — state is saved in this browser.</div>
+    </div>
+    <div class="counter">
+      <div><span class="n" id="count">0</span><span class="of"> / <span id="total">0</span></span></div>
+      <div class="of">checked</div>
+    </div>
+  </header>
+
+  <section class="group">
+    <div class="group-title">Solution Overview <span class="count">— required</span></div>
+    <div class="panel">
+      <label class="item">
+        <input type="checkbox" data-id="problem-statement">
+        <div class="item-body">
+          <span class="item-label">Problem statement selected</span>
+          <span class="dest">→ <span class="file">AegisAgent_Project_Description.docx</span> — header block + §2</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="proposed-solution">
+        <div class="item-body">
+          <span class="item-label">Proposed solution</span>
+          <span class="dest">→ <span class="file">Project_Description.docx</span> §1, §3 · <span class="file">Pitch_Deck.pptx</span> slides 1–3</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="impact">
+        <div class="item-body">
+          <span class="item-label">Expected business or societal impact</span>
+          <span class="dest">→ <span class="file">Project_Description.docx</span> §9 · <span class="file">Pitch_Deck.pptx</span> slide 11</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="success-metrics">
+        <div class="item-body">
+          <span class="item-label">Success metrics<span class="chip partial">partial</span></span>
+          <span class="dest">→ only in <span class="file">implementation-guide.md</span> QA table — not restated in the main doc</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="implementation-approach">
+        <div class="item-body">
+          <span class="item-label">Implementation approach</span>
+          <span class="dest">→ <span class="file">Project_Description.docx</span> §10–11 · <span class="file">implementation-guide.md</span></span>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-title">Technical Details <span class="count">— required</span></div>
+    <div class="panel">
+      <label class="item">
+        <input type="checkbox" data-id="tech-stack">
+        <div class="item-body">
+          <span class="item-label">Technology stack &amp; frameworks</span>
+          <span class="dest">→ <span class="file">Project_Description.docx</span> §4 (table) · <span class="file">Pitch_Deck.pptx</span> slide 4</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="arch-diagram">
+        <div class="item-body">
+          <span class="item-label">Architecture diagram</span>
+          <span class="dest">→ <span class="file">Pitch_Deck.pptx</span> slide 4</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="flow-charts">
+        <div class="item-body">
+          <span class="item-label">Flow charts</span>
+          <span class="dest">→ <span class="file">Project_Description.docx</span> §6 (numbered sequential steps)</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="wireframes">
+        <div class="item-body">
+          <span class="item-label">Wireframes<span class="chip missing">missing</span></span>
+          <span class="dest">→ not included — real screenshots stand in; see gap note below</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="graphical-reps">
+        <div class="item-body">
+          <span class="item-label">Graphical representations</span>
+          <span class="dest">→ <span class="file">Pitch_Deck.pptx</span> (cards, tables, timeline) + real screenshots</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="assumptions">
+        <div class="item-body">
+          <span class="item-label">Assumptions and constraints</span>
+          <span class="dest">→ <span class="file">Project_Description.docx</span> §8</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="scalability">
+        <div class="item-body">
+          <span class="item-label">Scalability considerations</span>
+          <span class="dest">→ <span class="file">Project_Description.docx</span> §8 (Scalability bullet) + §5.5</span>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-title">Optional Supporting Assets</div>
+    <div class="panel">
+      <label class="item">
+        <input type="checkbox" data-id="screenshots">
+        <div class="item-body">
+          <span class="item-label">Prototype screenshots / demo images</span>
+          <span class="dest">→ <span class="file">/demo-screenshots/01–05*.png</span> (5 files) · embedded in <span class="file">Pitch_Deck.pptx</span> slide 10</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="script">
+        <div class="item-body">
+          <span class="item-label">Screen-recording script<span class="chip partial">partial</span></span>
+          <span class="dest">→ <span class="file">demo-video-script.md</span> — ready, rehearsed, not yet recorded</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="video">
+        <div class="item-body">
+          <span class="item-label">Video + hosted link<span class="chip missing">missing</span></span>
+          <span class="dest">→ record per the script, host it, paste the link into the submission form</span>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-title">Before You Hit Submit</div>
+    <div class="panel">
+      <label class="item">
+        <input type="checkbox" data-id="team-name">
+        <div class="item-body">
+          <span class="item-label">Replace the <code>[Team Name]</code> placeholder</span>
+          <span class="dest">→ cover of both <span class="file">Project_Description.docx</span> and <span class="file">Pitch_Deck.pptx</span></span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="record-video">
+        <div class="item-body">
+          <span class="item-label">Record the ~90s video, one take, fresh boot</span>
+          <span class="dest">→ follow <span class="file">demo-video-script.md</span> exactly</span>
+        </div>
+      </label>
+      <label class="item">
+        <input type="checkbox" data-id="open-check">
+        <div class="item-body">
+          <span class="item-label">Open both files in real Word/PowerPoint before upload</span>
+          <span class="dest">→ built with python-docx/python-pptx, verified rendering — worth one direct look</span>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <div class="callout">
+    <div class="lbl">Gaps — flagged, not hidden</div>
+    <p><strong>Success metrics</strong> aren't a standalone numbered target set inside the Project Description — they live only in the Implementation Guide's QA table (100% policy accuracy, &lt;5ms p95 gateway overhead, &lt;250ms kill-switch propagation, 0 adversarial breaches, 100% tamper detection). Pull the table in directly, or make sure that guide is attached as a supporting doc.</p>
+    <p><strong>Wireframes</strong> aren't included as their own artifact. Real screenshots are arguably stronger evidence — but if a judge scores the checklist literally rather than holistically, this line reads empty. A single labeled wireframe of the console's 7 sections would close this in under 15 minutes.</p>
+    <p><strong>Video</strong> is the one genuinely unfinished item — script's ready and rehearsed against the real system; nobody has pressed record yet.</p>
+  </div>
+
+  <footer class="note">
+    Full detail in <code>submission/checklist.md</code> · criteria-to-paragraph mapping in <code>submission/criteria-mapping.md</code> (internal use only, not for the actual submission).
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type="checkbox"]'));
+    var countEl = document.getElementById('count');
+    var totalEl = document.getElementById('total');
+    var STORE_KEY = 'aegisagent-checklist-v1';
+
+    function load() {
+      try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
+      catch (e) { return {}; }
+    }
+    function save(state) {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+    function refreshCount() {
+      var checked = boxes.filter(function (b) { return b.checked; }).length;
+      countEl.textContent = String(checked);
+    }
+
+    var state = load();
+    boxes.forEach(function (b) {
+      var id = b.getAttribute('data-id');
+      if (state[id]) b.checked = true;
+      b.addEventListener('change', function () {
+        var s = load();
+        s[id] = b.checked;
+        save(s);
+        refreshCount();
+      });
+    });
+
+    totalEl.textContent = String(boxes.length);
+    refreshCount();
+  })();
+</script>
