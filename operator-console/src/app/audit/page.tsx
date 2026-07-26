@@ -49,7 +49,11 @@ export default function AuditPage() {
       setRows((prev) => {
         let next = prev;
         // Fold in any snapshot rows not already shown (e.g. on first load).
-        for (const entry of snapshot.entries) {
+        // snapshot.entries arrives newest-first; mergeRow prepends, so folding
+        // in that same order would prepend the newest row first and the
+        // oldest last, ending up oldest-first. Iterate oldest-to-newest
+        // instead, so the newest entry is prepended last and lands on top.
+        for (const entry of [...snapshot.entries].reverse()) {
           next = mergeRow(next, entryToFeedRow(entry));
         }
         return next;
