@@ -9,8 +9,8 @@ at the bottom, not glossed over.
 | Guideline item | Covered by |
 |---|---|
 | Problem statement selected | `AegisAgent_Project_Description_new.docx` — header block + §2 |
-| Proposed solution | `AegisAgent_Project_Description_new.docx` §1, §3 · `AegisAgent_Pitch_Deck.pptx` slides 1–3 |
-| Expected business or societal impact | `AegisAgent_Project_Description_new.docx` §9 · `AegisAgent_Pitch_Deck.pptx` slide 11 |
+| Proposed solution | `AegisAgent_Project_Description_new.docx` §1, §3 · `AegisAgent_Round1_Submission.pptx` slides 1–3 |
+| Expected business or societal impact | `AegisAgent_Project_Description_new.docx` §9 · `AegisAgent_Round1_Submission.pptx` slide 11 |
 | Success metrics | ⚠️ Partial — see gap note below |
 | Implementation approach | `AegisAgent_Project_Description_new.docx` §10–11 · `implementation-guide.md` (supporting doc) |
 
@@ -18,12 +18,12 @@ at the bottom, not glossed over.
 
 | Guideline item | Covered by |
 |---|---|
-| Technology stack | `AegisAgent_Project_Description_new.docx` §4 (table) · `AegisAgent_Pitch_Deck.pptx` slide 4 |
+| Technology stack | `AegisAgent_Project_Description_new.docx` §4 (table) · `AegisAgent_Round1_Submission.pptx` slide 4 |
 | Frameworks | Same — FastAPI, OPA/Rego, Redis, PostgreSQL, Next.js named explicitly |
-| Architecture diagram | `AegisAgent_Pitch_Deck.pptx` slide 4 (box-and-arrow flow) |
+| Architecture diagram | `AegisAgent_Round1_Submission.pptx` slide 4 (box-and-arrow flow) |
 | Flow charts | `AegisAgent_Project_Description_new.docx` §6 (numbered sequential steps) |
 | Wireframes | ❌ Not included — see gap note below |
-| Graphical representations | `AegisAgent_Pitch_Deck.pptx` (cards, stat rows, timeline) + real screenshots |
+| Graphical representations | `AegisAgent_Round1_Submission.pptx` (cards, stat rows, timeline) + real screenshots |
 | Assumptions and constraints | `AegisAgent_Project_Description_new.docx` §8 |
 | Scalability considerations | `AegisAgent_Project_Description_new.docx` §8 (Scalability bullet) + §5.5 |
 
@@ -31,7 +31,7 @@ at the bottom, not glossed over.
 
 | Guideline item | Covered by |
 |---|---|
-| Prototype screenshots | `/demo-screenshots/01–05*.png` (5 files) · embedded in `AegisAgent_Pitch_Deck.pptx` slide 10 |
+| Prototype screenshots | `/demo-screenshots/01–05*.png` (5 files) · embedded in `AegisAgent_Round1_Submission.pptx` slide 10 |
 | Demo images | Same 5 files |
 | Screen recording | ⚠️ Script ready (`demo-video-script.md`), **recording itself not yet made** |
 | Video + hosted link | ⚠️ **Not yet done** — record per the script, host (YouTube/Loom), add link to submission form |
@@ -39,7 +39,7 @@ at the bottom, not glossed over.
 ## Full file list to upload
 
 - [ ] `AegisAgent_Project_Description_new.docx`
-- [ ] `AegisAgent_Pitch_Deck.pptx`
+- [ ] `AegisAgent_Round1_Submission.pptx`
 - [ ] `demo-screenshots/01-normal-operation-wealth-hft-allowed.png`
 - [ ] `demo-screenshots/02-rogue-agent-denied.png`
 - [ ] `demo-screenshots/03-cap-tightened-next-request-denied.png`

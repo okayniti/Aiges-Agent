@@ -25,7 +25,7 @@ Innovation · Implementation & Impact.
 | 10 | Round 1 Progress (new) | **Implementation & Impact** — practicality, proven not asserted | Technical Solution & Innovation |
 | 11 | Team & Delivery Plan | Implementation & Impact — execution practicality/scalability | — |
 
-## Pitch Deck (`AegisAgent_Pitch_Deck.pptx`)
+## Pitch Deck (`AegisAgent_Round1_Submission.pptx`)
 
 | Slide | Title | Primary criterion |
 |---|---|---|
