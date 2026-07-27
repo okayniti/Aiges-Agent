@@ -50,9 +50,9 @@ at the bottom, not glossed over.
 
 ## Before you hit submit
 
-- [ ] Replace the `[Team Name]` placeholder in both the Project Description and the
-      Pitch Deck cover slide — carried over as-is since the real team name wasn't
-      given to this pass.
+- [x] Replace the `[Team Name]` placeholder — done in both
+      `AegisAgent_Project_Description_new.docx` and `AegisAgent_Round1_Submission.pptx`:
+      "The Three Stack — Dev Upadhyay (Team Lead), Niti Kanoongo, Smit Shah".
 - [x] Record the ~90s video from `demo-video-script.md` — done, `submission/demo video.mp4`.
 - [ ] Host the video (YouTube/Loom) and paste the link into the submission form, if the
       portal wants a URL rather than a direct file upload.
