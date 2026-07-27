@@ -33,8 +33,8 @@ at the bottom, not glossed over.
 |---|---|
 | Prototype screenshots | `/demo-screenshots/01–05*.png` (5 files) · embedded in `AegisAgent_Round1_Submission.pptx` slide 10 |
 | Demo images | Same 5 files |
-| Screen recording | ⚠️ Script ready (`demo-video-script.md`), **recording itself not yet made** |
-| Video + hosted link | ⚠️ **Not yet done** — record per the script, host (YouTube/Loom), add link to submission form |
+| Screen recording | ✅ Recorded — `submission/demo video.mp4`, following `demo-video-script.md` |
+| Video + hosted link | ⚠️ Video file is in the repo; **not yet hosted** — upload to YouTube/Loom and add the link to the submission form (or upload the file directly if the portal accepts it) |
 
 ## Full file list to upload
 
@@ -45,7 +45,7 @@ at the bottom, not glossed over.
 - [ ] `demo-screenshots/03-cap-tightened-next-request-denied.png`
 - [ ] `demo-screenshots/04-emergency-stop-all-agents-halted.png`
 - [ ] `demo-screenshots/05-audit-tamper-detected.png`
-- [ ] Demo video file **or** hosted link (once recorded)
+- [x] Demo video file — `submission/demo video.mp4` **or** hosted link (host it if the portal wants a URL)
 - [ ] *(Recommended, optional)* Implementation Guide, as supporting detail behind §10/§11
 
 ## Before you hit submit
@@ -53,8 +53,9 @@ at the bottom, not glossed over.
 - [ ] Replace the `[Team Name]` placeholder in both the Project Description and the
       Pitch Deck cover slide — carried over as-is since the real team name wasn't
       given to this pass.
-- [ ] Record the ~90s video from `demo-video-script.md` (one take, against a
-      freshly-booted stack), host it, and paste the link into the submission form.
+- [x] Record the ~90s video from `demo-video-script.md` — done, `submission/demo video.mp4`.
+- [ ] Host the video (YouTube/Loom) and paste the link into the submission form, if the
+      portal wants a URL rather than a direct file upload.
 - [ ] Sanity-check the two documents open cleanly in real Word/PowerPoint on the
       machine that will actually submit them (built here with `python-docx` /
       `python-pptx`, not exported from the original design tool — verified to
@@ -78,6 +79,3 @@ at the bottom, not glossed over.
   holistically, this line item reads as empty. Cheapest fix: a single
   labeled diagram-style wireframe of the operator console's 7 sections would
   satisfy the letter of the requirement in under 15 minutes, if wanted.
-- **Video/recording** is the one genuinely unfinished mandatory-adjacent item —
-  the script is ready and rehearsed against the real system, but nobody has
-  pressed record yet.
