@@ -172,6 +172,12 @@ npm install && npm run dev
 `GET http://localhost:8001/health` for a liveness check;
 `docs/architecture.md` and each service's own `README.md` cover every endpoint.
 
+**Want it on a public URL instead of localhost?** [`docs/deployment.md`](docs/deployment.md)
+walks through hosting the whole stack for free — Vercel for the console, Koyeb for the
+gateway + OPA (one of the few free tiers that keeps WebSockets working), Upstash for
+Redis, Supabase for Postgres — with every step re-verified against each provider's
+current 2026 free tier, not assumed.
+
 ## Tech stack
 
 | Layer | Technology | Why |

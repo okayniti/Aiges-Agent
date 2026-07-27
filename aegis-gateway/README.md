@@ -66,3 +66,16 @@ measured drift.
 
 An allowed action does not yet get forwarded to a downstream banking API. See
 `docs/architecture.md` for the full flow and what is still unbuilt.
+
+## Configuration
+
+All backing services are overridable by environment variable, so the same image runs
+against `infra/docker-compose.yml` locally or against managed services in the cloud
+without a rebuild.
+
+| Variable | Default (docker-compose) | Points to |
+| --- | --- | --- |
+| `AEGIS_OPERATOR_KEY` | *(unset — fails closed)* | shared operator secret, see above |
+| `OPA_URL` | `http://opa:8181` | OPA server (no trailing slash) |
+| `REDIS_URL` | `redis://redis:6379` | Redis — use `rediss://` for a TLS endpoint (e.g. Upstash) |
+| `POSTGRES_DSN` | `postgresql://postgres:aegis_dev_password@postgres:5432/aegis` | Postgres ledger — a managed provider's connection string works as-is |

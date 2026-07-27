@@ -16,10 +16,13 @@ import redis.asyncio as redis
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-OPA_AUTHZ_URL = "http://opa:8181/v1/data/aegis/authz"
-OPA_PERMISSIONS_URL = "http://opa:8181/v1/data/permissions"
-REDIS_URL = "redis://redis:6379"
-POSTGRES_DSN = "postgresql://postgres:aegis_dev_password@postgres:5432/aegis"
+OPA_URL = os.environ.get("OPA_URL", "http://opa:8181")
+OPA_AUTHZ_URL = f"{OPA_URL}/v1/data/aegis/authz"
+OPA_PERMISSIONS_URL = f"{OPA_URL}/v1/data/permissions"
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379")
+POSTGRES_DSN = os.environ.get(
+    "POSTGRES_DSN", "postgresql://postgres:aegis_dev_password@postgres:5432/aegis"
+)
 AGENTS_FILE = Path(__file__).parent / "agents.json"
 
 # The chain has to start somewhere; the first row links to 64 zeros.
